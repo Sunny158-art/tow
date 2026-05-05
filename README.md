@@ -1,31 +1,252 @@
-# XV6 System Call Extension (hello)
+# XV6 Kernel Mechanism Practice & System Call Extension
 
-本项目为 MIT xv6 操作系统添加了一个自定义的系统调用 `hello()`，旨在学习和验证操作系统内核从用户态到内核态的完整调用机制。
-
-## 目录
-- [项目简介](#项目简介)
-- [环境要求](#环境要求)
-- [新增系统调用步骤](#新增系统调用步骤)
-- [编译与运行](#编译与运行)
-- [实验结果](#实验结果)
-
----
-
-## 项目简介
-
-本项目在 xv6-riscv 基础上实现了以下功能：
-1. **用户态接口扩展**：通过修改 `usys.pl` 和 `user.h` 提供 `hello()` 系统调用接口。
-2. **内核态注册**：在 `syscall.h` 和 `syscall.c` 中分配系统调用号，并建立从系统调用号到具体内核处理函数的映射。
-3. **内核态实现**：在 `sysproc.c` 中实现对应的处理逻辑。
-4. **测试验证**：编写 `hello.c` 用户程序进行系统调用测试。
+### 🌟 任务完成情况总结
+#### 第一层任务：机制观察与追踪
+* 成功在 QEMU 中运行 xv6
+* 输出系统运行关键日志
+* 跟踪系统调用路径
+#### 第二层任务：系统调用扩展
+* 成功新增系统调用 `hello()`
+* 完成：
+  * 用户态接口注册
+  * 内核态 syscall 注册
+  * 内核函数实现
+* 修改 Makefile 并成功编译
+* 用户程序调用验证成功
 
 ---
 
-## 环境要求
+## 📚 项目简介
 
-- **操作系统**：Linux 或 macOS
-- **工具链**：`riscv64-unknown-elf-gcc` 或 `riscv64-linux-gnu-gcc`
-- **模拟器**：QEMU (支持 riscv64)
+本项目基于 xv6-riscv，完成了操作系统实践周的前两层任务：
+
+### ✅ 第一层（必做）
+
+* 系统调用路径追踪
+* 调度过程观察
+* 内存分配观察
+
+### ✅ 第二层（选做）
+
+* 新增系统调用 `hello()`
 
 ---
 
+## ⚙️ 环境要求
+
+* 操作系统：Linux / macOS
+* 编译工具：
+
+  ```bash
+  riscv64-unknown-elf-gcc
+  ```
+
+  或
+
+  ```bash
+  riscv64-linux-gnu-gcc
+  ```
+* 模拟器：
+
+  ```bash
+  QEMU (riscv64)
+  ```
+
+---
+
+## 🔍 第一层任务：机制观察
+
+### 1️⃣ 系统调用路径跟踪（write）
+
+在以下位置添加日志：
+
+#### 用户态（user 程序）
+
+```c
+printf("[USER] calling write\n");
+```
+
+#### kernel/syscall.c
+
+```c
+printf("[KERNEL] enter syscall\n");
+```
+
+#### sys_write()
+
+```c
+printf("[KERNEL] sys_write invoked\n");
+```
+
+---
+
+### 2️⃣ 调度过程观察
+
+在 `scheduler()` 中：
+
+```c
+printf("[SCHED] switch to pid=%d\n", p->pid);
+```
+
+观察现象：
+
+* 进程交替执行
+* 时间片轮转
+
+---
+
+### 3️⃣ 内存分配观察
+
+在 `kalloc.c`：
+
+```c
+printf("[MEM] alloc page at %p\n", pa);
+```
+
+观察：
+
+* 是否连续分配
+* 是否复用
+
+---
+
+## 🚀 第二层任务：新增系统调用 hello()
+
+### 📌 实现流程
+
+---
+
+### 1️⃣ 用户态声明
+
+#### user/user.h
+
+```c
+int hello(void);
+```
+
+#### user/usys.pl
+
+```perl
+entry("hello");
+```
+
+---
+
+### 2️⃣ 内核态注册
+
+#### kernel/syscall.h
+
+```c
+#define SYS_hello 22
+```
+
+#### kernel/syscall.c
+
+```c
+extern uint64 sys_hello(void);
+
+[SYS_hello] sys_hello,
+```
+
+---
+
+### 3️⃣ 内核实现
+
+#### kernel/sysproc.c
+
+```c
+uint64
+sys_hello(void)
+{
+  return 0;
+}
+```
+
+---
+
+### 4️⃣ 用户测试程序
+
+#### user/hello.c
+
+```c
+#include "kernel/types.h"
+#include "kernel/stat.h"
+#include "user/user.h"
+
+int
+main(int argc, char *argv[])
+{
+  printf("Calling the new system call hello():\n");
+  hello();
+  printf("Hello, xv6!\n");
+  exit(0);
+}
+```
+
+---
+
+### 5️⃣ 修改 Makefile
+
+```makefile
+$U/_hello\
+```
+
+---
+
+## 🖥️ 编译与运行
+
+```bash
+make clean && make qemu
+```
+
+进入 xv6：
+
+```bash
+$ hello
+```
+
+---
+
+## 📊 实验结果
+
+```text
+Calling the new system call hello():
+Hello, xv6!
+```
+
+---
+
+## ⚠️ 遇到的问题与解决
+
+### ❌ 问题 1：系统调用未注册
+
+* 原因：未在 syscall.c 添加映射
+* 解决：补充 `[SYS_hello] sys_hello`
+
+### ❌ 问题 2：用户程序无法运行
+
+* 原因：Makefile 未添加
+* 解决：加入 `$U/_hello`
+
+---
+
+## 💡 实践心得（示例，可自行扩展）
+
+通过本次 xv6 实践，我对操作系统从“能运行”到“如何运行”有了更加深入的理解。尤其是在系统调用部分，我第一次完整打通了用户态到内核态的执行路径，从接口声明、系统调用号分配，到内核函数实现和最终返回结果，这一过程让我清晰认识到操作系统的分层设计思想。
+
+在第一层任务中，通过添加日志，我观察到了调度器如何在多个进程之间切换，以及内存分配的基本行为。这种“可视化操作系统”的方式，比单纯阅读代码更加直观，也更容易理解底层机制。
+
+在第二层任务中，实现 hello() 系统调用让我体会到操作系统扩展的基本方法。虽然功能简单，但涉及多个文件协同修改，这对代码结构理解要求较高。
+
+总体来说，本次实践不仅提升了我对操作系统原理的理解，也增强了我阅读和修改大型系统代码的能力，为后续学习打下了坚实基础。
+
+---
+
+## 📌 仓库说明
+
+* ✅ xv6 可正常运行
+* ✅ 已完成第一层 + 第二层任务
+* ✅ 包含 README.md
+* ✅ 多次 commit 记录实验过程
+
+---
